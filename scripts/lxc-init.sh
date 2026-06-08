@@ -101,6 +101,9 @@ _sshd_set "MaxAuthTries"             "3"
 _sshd_set "LoginGraceTime"           "30"
 _sshd_set "AllowUsers"               "$ADMIN_USER"
 
+# Disables login to root
+passwd -l root
+
 info "SSH hardened. Root login disabled."
 
 info "Restarting SSH service..."
