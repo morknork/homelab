@@ -1,55 +1,71 @@
 #!/usr/bin/env bash
-# Creates a sudo admin user (madmin), gets tools, harden ssh, disables root login
+# =============================================================================
+# lxc-init.sh — Initial LXC hardening script
+# Creates a sudo admin user (madmin), hardens SSH, disables root login,
+# installs zsh + oh-my-zsh + tldr
+# Run as root on a fresh Debian/Ubuntu LXC
+# =============================================================================
 
-# e - exit if any command fails
-# u - treat unset variables as errors
-# o - pipeline fail if any command fails
 set -euo pipefail
 
-# Colour helpers
+# --- Colour helpers ----------------------------------------------------------
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 info()    { echo -e "${GREEN}[INFO]${NC}  $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
-# Check for root user
+# --- Must run as root --------------------------------------------------------
 [[ $EUID -ne 0 ]] && error "This script must be run as root."
 
 ADMIN_USER="madmin"
 
-# Updates
+# =============================================================================
+# 1. System update
+# =============================================================================
 info "Updating package lists..."
 apt-get update -qq
 
 info "Upgrading installed packages..."
 apt-get upgrade -y -qq
 
-# Get Packages
+# =============================================================================
+# 2. Install essentials
+# =============================================================================
 info "Installing essential packages..."
 apt-get install -y -qq \
     sudo \
-    curl \
     wget \
-    git \
-    unzip \
     ca-certificates \
     gnupg \
     lsb-release \
-    openssh-server 
+    openssh-server \
+    zsh \
+    pipx
 
-# Create Admin user
+# =============================================================================
+# 3. Create admin user
+# =============================================================================
 if id "$ADMIN_USER" &>/dev/null; then
     warn "User '$ADMIN_USER' already exists — skipping creation."
 else
     info "Creating user '$ADMIN_USER'..."
-    useradd -m -s /bin/bash "$ADMIN_USER"
+    useradd -m -s /bin/zsh "$ADMIN_USER"
     info "Please set a password for '$ADMIN_USER':"
-    passwd "$ADMIN_USER"
+    passwd "$ADMIN_USER" < /dev/tty
     usermod -aG sudo "$ADMIN_USER"
     info "User '$ADMIN_USER' created and added to sudo group."
 fi
 
-# SSH key setup
+# =============================================================================
+# 4. Lock root account
+# =============================================================================
+info "Locking root account..."
+passwd -l root
+info "Root account locked."
+
+# =============================================================================
+# 5. SSH key setup (optional but strongly recommended)
+# =============================================================================
 SSH_DIR="/home/${ADMIN_USER}/.ssh"
 AUTH_KEYS="${SSH_DIR}/authorized_keys"
 
@@ -60,10 +76,10 @@ chmod 600 "$AUTH_KEYS"
 chown -R "${ADMIN_USER}:${ADMIN_USER}" "$SSH_DIR"
 
 echo ""
-read -rp "Do you want to add an SSH public key for '$ADMIN_USER'? [y/N]: " ADD_KEY
+read -rp "Do you want to add an SSH public key for '$ADMIN_USER'? [y/N]: " ADD_KEY < /dev/tty
 if [[ "$ADD_KEY" =~ ^[Yy]$ ]]; then
     echo "Paste your public key (e.g. contents of ~/.ssh/id_ed25519.pub), then press Enter:"
-    read -r PUBKEY
+    read -r PUBKEY < /dev/tty
     if [[ -n "$PUBKEY" ]]; then
         echo "$PUBKEY" >> "$AUTH_KEYS"
         info "SSH public key added."
@@ -74,7 +90,9 @@ else
     warn "No SSH key added. Make sure you can log in as '$ADMIN_USER' before continuing."
 fi
 
-# SSH hardening
+# =============================================================================
+# 6. Harden SSH config
+# =============================================================================
 info "Hardening SSH configuration..."
 SSHD_CONFIG="/etc/ssh/sshd_config"
 
@@ -101,22 +119,65 @@ _sshd_set "MaxAuthTries"             "3"
 _sshd_set "LoginGraceTime"           "30"
 _sshd_set "AllowUsers"               "$ADMIN_USER"
 
-# Disables login to root
-passwd -l root
-
 info "SSH hardened. Root login disabled."
 
+# =============================================================================
+# 7. Install oh-my-zsh + write .zshrc
+# =============================================================================
+info "Installing oh-my-zsh for '$ADMIN_USER'..."
+su - "$ADMIN_USER" -c \
+    'sh -c "$(wget -qO- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended' \
+    < /dev/tty || warn "oh-my-zsh install encountered an issue — check manually."
+
+info "Writing .zshrc for '$ADMIN_USER'..."
+cat > "/home/${ADMIN_USER}/.zshrc" << 'ZSHRC'
+# Path to your Oh My Zsh installation.
+export ZSH="$HOME/.oh-my-zsh"
+
+ZSH_THEME="juanghurtado"
+
+plugins=(git)
+
+source $ZSH/oh-my-zsh.sh
+
+# Aliases
+alias upup="sudo apt update && sudo apt upgrade -y"
+
+# pipx
+export PATH="$PATH:$HOME/.local/bin"
+autoload -U bashcompinit
+bashcompinit
+ZSHRC
+
+chown "${ADMIN_USER}:${ADMIN_USER}" "/home/${ADMIN_USER}/.zshrc"
+info ".zshrc written."
+
+# =============================================================================
+# 8. Install tldr via pipx
+# =============================================================================
+info "Installing tldr via pipx for '$ADMIN_USER'..."
+su - "$ADMIN_USER" -c 'pipx install tldr' < /dev/tty || warn "tldr install encountered an issue — check manually."
+info "tldr installed."
+
+# =============================================================================
+# 9. Restart SSH
+# =============================================================================
 info "Restarting SSH service..."
 systemctl restart ssh 2>/dev/null || systemctl restart sshd 2>/dev/null || warn "Could not restart SSH — do it manually."
 
-# Final
+# =============================================================================
+# Done
+# =============================================================================
 echo ""
 echo -e "${GREEN}============================================================${NC}"
 echo -e "${GREEN} Initial hardening complete!${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo ""
-echo "  Admin user : $ADMIN_USER"
-echo "  Root login : DISABLED"
+echo "  Admin user   : $ADMIN_USER"
+echo "  Shell        : zsh + oh-my-zsh (juanghurtado)"
+echo "  tldr         : installed via pipx"
+echo "  Root login   : DISABLED"
+echo "  Root account : LOCKED"
 echo ""
 echo -e "${YELLOW}IMPORTANT — Before closing this session:${NC}"
 echo "  1. Open a NEW terminal and verify you can log in as '$ADMIN_USER'"
@@ -124,7 +185,7 @@ echo "  2. Verify 'sudo -v' works for '$ADMIN_USER'"
 echo "  3. Only then close this root session"
 echo ""
 if [[ "$ADD_KEY" =~ ^[Yy]$ ]]; then
-    echo -e "${YELLOW}Once key login is confirmed, consider running:${NC}"
+    echo -e "${YELLOW}Once key login is confirmed, consider disabling password auth:${NC}"
     echo "  sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config"
     echo "  systemctl restart ssh"
     echo ""
