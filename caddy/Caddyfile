@@ -49,6 +49,11 @@
 
         @prowlarr host prowlarr.morknork.com
         handle @prowlarr {
+                reverse_proxy /outpost.goauthentik.io/* http://auth.morknork:9000
+                        forward_auth 10.0.0.3:9000 {
+                                uri /outpost.goauthentik.io/auth/caddy
+                                copy headers copy_headers X-Authentik-Username X-Authentik-Groups X-Authentik-Entitlements X-Authentik-Email X-Authentik-Name X-Authentik-Uid X-Authentik-Jwt X-Authentik-Meta-Jwks X-Authentik-Meta-Outpost X-Authentik-Meta-Provider X-Authentik-Meta-App X-Authentik-Meta-Version
+                }
                 reverse_proxy 10.0.0.8:9696
         }
 
