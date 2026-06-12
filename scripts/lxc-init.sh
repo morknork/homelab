@@ -141,7 +141,12 @@ plugins=(git)
 source $ZSH/oh-my-zsh.sh
 
 # Aliases
-alias upup="sudo apt update && sudo apt upgrade -y"
+alias upup="sudo apt-get update && sudo apt-get upgrade -y"
+alias dcup='sudo docker compose up -d'
+alias dcdn='sudo docker compose down'
+alias dcl='sudo docker compose logs -f'
+alias dcre='sudo docker compose up -d --force-recreate'
+alias dcps='sudo docker compose ps'
 
 # pipx
 export PATH="$PATH:$HOME/.local/bin"
