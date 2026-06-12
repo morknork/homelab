@@ -147,6 +147,7 @@ alias dcdn='sudo docker compose down'
 alias dcl='sudo docker compose logs -f'
 alias dcre='sudo docker compose up -d --force-recreate'
 alias dcps='sudo docker compose ps'
+alias dcpl='sudo docker compose pull'
 
 # pipx
 export PATH="$PATH:$HOME/.local/bin"
