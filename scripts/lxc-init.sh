@@ -40,7 +40,11 @@ apt-get install -y -qq \
     lsb-release \
     openssh-server \
     zsh \
-    pipx
+    pipx \
+    command-not-found
+
+info "Building command-not-found database..."
+update-command-not-found
 
 # =============================================================================
 # 3. Create admin user
@@ -129,33 +133,10 @@ su - "$ADMIN_USER" -c \
     'sh -c "$(wget -qO- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended' \
     < /dev/tty || warn "oh-my-zsh install encountered an issue — check manually."
 
-info "Writing .zshrc for '$ADMIN_USER'..."
-cat > "/home/${ADMIN_USER}/.zshrc" << 'ZSHRC'
-# Path to your Oh My Zsh installation.
-export ZSH="$HOME/.oh-my-zsh"
-
-ZSH_THEME="juanghurtado"
-
-plugins=(git)
-
-source $ZSH/oh-my-zsh.sh
-
-# Aliases
-alias upup="sudo apt-get update && sudo apt-get upgrade -y"
-alias dcup='sudo docker compose up -d'
-alias dcdn='sudo docker compose down'
-alias dcl='sudo docker compose logs -f'
-alias dcre='sudo docker compose up -d --force-recreate'
-alias dcps='sudo docker compose ps'
-alias dcpl='sudo docker compose pull'
-
-# pipx
-export PATH="$PATH:$HOME/.local/bin"
-autoload -U bashcompinit
-bashcompinit
-ZSHRC
-
-chown "${ADMIN_USER}:${ADMIN_USER}" "/home/${ADMIN_USER}/.zshrc"
+info "Getting .zshrc for '$ADMIN_USER'..."
+su - "$ADMIN_USER" -c \
+    'wget -q -O "$HOME/.zshrc" "https://raw.githubusercontent.com/morknork/homelab/main/config/.zshrc"' \
+    || warn "Failed to fetch .zshrc — leaving oh-my-zsh default."
 info ".zshrc written."
 
 # =============================================================================
@@ -164,6 +145,9 @@ info ".zshrc written."
 info "Installing tldr via pipx for '$ADMIN_USER'..."
 su - "$ADMIN_USER" -c 'pipx install tldr' < /dev/tty || warn "tldr install encountered an issue — check manually."
 info "tldr installed."
+info "Updating tldr"
+
+tldr --update
 
 # =============================================================================
 # 9. Restart SSH
