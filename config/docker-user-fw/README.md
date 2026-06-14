@@ -28,9 +28,10 @@ Systemd unit ensures script is run after docker.service
 Run
  - systemctl status docker-user-fw.service
  - sudo iptables -S DOCKER-USER
-
+```
 You should see (based on WAN & Allow IP):
 -N DOCKER-USER
--A DOCKER-USER /-i ${WAN} -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN
--A DOCKER-USER /-i ${WAN} ! -s ${Allow IP} -j DROP
+-A DOCKER-USER -i ${WAN} -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN
+-A DOCKER-USER -i ${WAN} ! -s ${Allow IP} -j DROP
 -A DOCKER-USER -j RETURN
+```
