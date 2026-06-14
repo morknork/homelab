@@ -1,6 +1,6 @@
-## Docker-User FW
+# Docker-User FW
 
-# Overview
+## Overview
 
 Docker forwards traffic to containers by adding rules to iptables.
 Since this traffic goes through the FORWARD chain and not the INPUT chain, traffic doesn't reach ufw rules.
@@ -15,7 +15,7 @@ Systemd unit ensures script is run after docker.service
  - partof= runs service unit if docker.service restarts
  - wantedby= runs service unit on boot
 
-# Install Steps
+## Install Steps
 
 1. Add script to '/usr/local/sbin/docker-user-fw.sh'
 2. sudo chown root:root /usr/local/sbin/docker-user-fw.sh
@@ -24,7 +24,7 @@ Systemd unit ensures script is run after docker.service
 5. sudo systemctl daemon-reload
 6. sudo systemctl enable --now docker-user-fw.service 
 
-# Verify 
+## Verify 
 Run
  - systemctl status docker-user-fw.service
  - sudo iptables -S DOCKER-USER
