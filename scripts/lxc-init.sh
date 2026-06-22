@@ -39,6 +39,7 @@ apt-get upgrade -y -qq
 # =============================================================================
 info "Installing essential packages..."
 apt-get install -y -qq \
+    curl \
     sudo \
     wget \
     ca-certificates \
