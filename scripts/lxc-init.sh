@@ -20,8 +20,14 @@ error()   { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 ADMIN_USER="madmin"
 
 # =============================================================================
-# 1. System update
+# 1. Set Locale & System update
 # =============================================================================
+
+echo "en_AU.UTF-8 UTF-8" >> /etc/locale.gen
+locale-gen                              
+update-locale LANG=en_AU.UTF-8          
+export LANG=en_AU.UTF-8 LC_ALL=en_AU.UTF-8
+
 info "Updating package lists..."
 apt-get update -qq
 
