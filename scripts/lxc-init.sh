@@ -22,11 +22,15 @@ ADMIN_USER="madmin"
 # =============================================================================
 # 1. Set Locale & System update
 # =============================================================================
+# Guard the append: every unguarded >> in an idempotent script is a bug.
+grep -qxF "en_AU.UTF-8 UTF-8" /etc/locale.gen 2>/dev/null \
+    || echo "en_AU.UTF-8 UTF-8" >> /etc/locale.gen
+locale-gen
 
-echo "en_AU.UTF-8 UTF-8" >> /etc/locale.gen
-locale-gen                              
-update-locale LANG=en_AU.UTF-8          
+# Export BEFORE update-locale so its perl process runs in a sane env.
+# LC_ALL overrides whatever LANG leaked in from the pct enter / SSH session.
 export LANG=en_AU.UTF-8 LC_ALL=en_AU.UTF-8
+update-locale LANG=en_AU.UTF-8
 
 info "Updating package lists..."
 apt-get update -qq
@@ -43,6 +47,7 @@ apt-get install -y -qq \
     sudo \
     wget \
     ca-certificates \
+    git \
     gnupg \
     lsb-release \
     openssh-server \
@@ -51,6 +56,9 @@ apt-get install -y -qq \
     command-not-found
 
 info "Building command-not-found database..."
+# cnf's apt hooks only exist after the package is installed, so the metadata
+# is only fetched by an update run AFTER installation.
+apt-get update -qq
 update-command-not-found
 
 # =============================================================================
@@ -92,7 +100,7 @@ if [[ "$ADD_KEY" =~ ^[Yy]$ ]]; then
     echo "Paste your public key (e.g. contents of ~/.ssh/id_ed25519.pub), then press Enter:"
     read -r PUBKEY < /dev/tty
     if [[ -n "$PUBKEY" ]]; then
-        echo "$PUBKEY" >> "$AUTH_KEYS"
+        grep -qxF "$PUBKEY" "$AUTH_KEYS" || echo "$PUBKEY" >> "$AUTH_KEYS"
         info "SSH public key added."
     else
         warn "No key entered — skipping."
@@ -102,33 +110,37 @@ else
 fi
 
 # =============================================================================
-# 6. Harden SSH config
+# 6. Harden SSH config (drop-in, not sed)
 # =============================================================================
+# Debian's sshd_config Includes /etc/ssh/sshd_config.d/*.conf at the TOP of
+# the file, and in OpenSSH the FIRST occurrence of a keyword wins. A drop-in
+# named 00-* therefore beats both other drop-ins and the main config body.
+# Rewriting the whole file each run is idempotent by construction.
 info "Hardening SSH configuration..."
-SSHD_CONFIG="/etc/ssh/sshd_config"
+SSHD_DROPIN="/etc/ssh/sshd_config.d/00-hardening.conf"
 
-# Back up original
-cp "$SSHD_CONFIG" "${SSHD_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
+cat > "$SSHD_DROPIN" <<EOF
+# Managed by lxc-init.sh — edits here are overwritten on re-run
+PermitRootLogin no
+PasswordAuthentication yes
+# keep PasswordAuthentication yes until key login confirmed
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+PermitEmptyPasswords no
+X11Forwarding no
+MaxAuthTries 3
+LoginGraceTime 30
+AllowUsers ${ADMIN_USER}
+EOF
+chmod 600 "$SSHD_DROPIN"
 
-# Apply settings — update if present, append if not
-_sshd_set() {
-    local key="$1" val="$2"
-    if grep -qE "^#?${key}" "$SSHD_CONFIG"; then
-        sed -i "s|^#\?${key}.*|${key} ${val}|" "$SSHD_CONFIG"
-    else
-        echo "${key} ${val}" >> "$SSHD_CONFIG"
-    fi
-}
-
-_sshd_set "PermitRootLogin"          "no"
-_sshd_set "PasswordAuthentication"   "yes"   # keep yes until key login confirmed
-_sshd_set "PubkeyAuthentication"     "yes"
-_sshd_set "AuthorizedKeysFile"       ".ssh/authorized_keys"
-_sshd_set "PermitEmptyPasswords"     "no"
-_sshd_set "X11Forwarding"            "no"
-_sshd_set "MaxAuthTries"             "3"
-_sshd_set "LoginGraceTime"           "30"
-_sshd_set "AllowUsers"               "$ADMIN_USER"
+# Validate before we ever restart — a bad config plus a restart is a lockout.
+if sshd -t 2>/dev/null; then
+    info "sshd config valid."
+else
+    rm -f "$SSHD_DROPIN"
+    error "sshd config validation failed — drop-in removed, sshd untouched."
+fi
 
 info "SSH hardened. Root login disabled."
 
@@ -150,11 +162,19 @@ info ".zshrc written."
 # 8. Install tldr via pipx
 # =============================================================================
 info "Installing tldr via pipx for '$ADMIN_USER'..."
-su - "$ADMIN_USER" -c 'pipx install tldr' < /dev/tty || warn "tldr install encountered an issue — check manually."
-info "tldr installed."
-info "Updating tldr"
+su - "$ADMIN_USER" -c 'pipx install tldr' < /dev/tty \
+    || warn "tldr install encountered an issue — check manually."
 
-tldr --update
+info "Adding ~/.local/bin to PATH for '$ADMIN_USER'..."
+su - "$ADMIN_USER" -c 'pipx ensurepath' \
+    || warn "pipx ensurepath failed — add ~/.local/bin to PATH manually."
+
+info "Updating tldr cache..."
+# Run as the user it was installed for, via explicit path — the PATH change
+# from ensurepath only applies to NEW login shells, not this one.
+su - "$ADMIN_USER" -c '"$HOME/.local/bin/tldr" --update' \
+    || warn "tldr cache update failed — run 'tldr -u' manually as $ADMIN_USER."
+info "tldr installed."
 
 # =============================================================================
 # 9. Restart SSH
@@ -171,8 +191,9 @@ echo -e "${GREEN} Initial hardening complete!${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo ""
 echo "  Admin user   : $ADMIN_USER"
-echo "  Shell        : zsh + oh-my-zsh (juanghurtado)"
+echo "  Shell        : zsh + oh-my-zsh"
 echo "  tldr         : installed via pipx"
+echo "  SSH config   : $SSHD_DROPIN"
 echo "  Root login   : DISABLED"
 echo "  Root account : LOCKED"
 echo ""
@@ -182,8 +203,8 @@ echo "  2. Verify 'sudo -v' works for '$ADMIN_USER'"
 echo "  3. Only then close this root session"
 echo ""
 if [[ "$ADD_KEY" =~ ^[Yy]$ ]]; then
-    echo -e "${YELLOW}Once key login is confirmed, consider disabling password auth:${NC}"
-    echo "  sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config"
+    echo -e "${YELLOW}Once key login is confirmed, disable password auth:${NC}"
+    echo "  sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' $SSHD_DROPIN"
     echo "  systemctl restart ssh"
     echo ""
 fi
