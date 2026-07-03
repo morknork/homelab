@@ -1,9 +1,9 @@
 # Detection Lab
 ## 1. Domain
 - [x] promote server to DC (see promotion checklist)
-- [ ] join the Win11 client to domain
-- [ ] basic AD structure: users, groups, OUs
-- [ ] confirm client logs in with domain creds
+- [x] join the Win11 client to domain
+- [x] basic AD structure: users, groups, OUs
+- [x] confirm client logs in with domain creds
 
 ## 2. Telemetry
 - [ ] install Sysmon

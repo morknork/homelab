@@ -10,10 +10,20 @@ Set-DnsServerForwarder -IPAddress "10.0.0.25" -Passthru
 
 Thought there was some trouble with internet connectivitiy due to the globe in systray showing no internet and nslookup returning website.com.morknork.com
  - nslookup was appending morknork.com
- Resolve-DnsName website.com returned an actual IP
- Browser connects to internet okay
+Resolve-DnsName website.com returned an actual IP
+Browser connects to internet okay
 
- ## Workstation
+Realised the DC name was random after promoting to DC and running AD populate script. Tore down forest and renamed to MEKDC01
 
- ## AD User/Group Setup
- 
+## Workstation
+
+Access denied when trying to domain join the WS. Time had drifted between the DC and WS. Used w32m /resync to align the times. Time difference caused Kerberos to deny the ticket 
+
+## AD User/Group Setup
+
+Script created with a functional test environment
+
+## Notes
+- Added SSH signing key to github and git config, default verified commits now
+    https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification#ssh-commit-signature-verification
+
