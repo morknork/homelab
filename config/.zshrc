@@ -17,6 +17,6 @@ alias dcps='sudo docker compose ps'
 alias dcpl='sudo docker compose pull'
 
 # pipx
-export PATH="$PATH:$HOME/.local/bin"
+export PATH="$PATH:$HOME/.local:/bin:/sbin:/usr/sbin:/home/madmin/.local/bin/"
 autoload -U bashcompinit
 bashcompinit
