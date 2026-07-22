@@ -1,0 +1,31 @@
+# Run `ansible-playbook /home/madmin/ansible/playbooks/bootstrap.yml -u madmin -K --private-key /home/madmin/.ssh/id_ed25119 --inventory /home/madmin/homelab/ansible/inventory.yml`
+- name: bootstrap with svc-ansible
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Create ansible group
+      ansible.builtin.group:
+        name: ansible
+        state: present
+
+    - name: Create svc-ansible user
+      ansible.builtin.user:
+        name: svc-ansible
+        group: ansible
+        password_lock: true
+        state: present
+        shell: /bin/bash
+
+    - name: Add SSH key to authorized users
+      ansible.posix.authorized_key:
+        user: svc-ansible
+        state: present
+        key: "{{ lookup('file', service_ssh_public_key_path) }}"
+
+    - name: Add svc-ansible to passwordless sudo
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/ansible
+        content: "svc-ansible ALL=(ALL) NOPASSWD:ALL\n"
+        mode: "0440"
+        validate: "visudo -cf %s"

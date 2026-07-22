@@ -1,0 +1,20 @@
+all:
+  children:
+    proxmox:
+      hosts:
+        pve01: { ansible_host: 10.0.0.21 }
+    guests:
+      children:
+        lxc:
+          hosts:
+            jellyfin01: { ansible_host: 10.0.0.9 }
+            adguard01: { ansible_host: 10.0.0.25 }
+            caddy01: { ansible_host: 10.0.0.5 }
+            authentik01: { ansible_host: 10.0.0.3 }
+            c-dev01: { ansible_host: 10.0.0.28 }
+        vm:
+          hosts:
+            docker-arr01: { ansible_host: 10.0.0.8 }
+    control:
+          hosts:
+            work-shell01: { ansible_connection: local }
