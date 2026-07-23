@@ -1,0 +1,25 @@
+base_common_timezone: "Australia/Melbourne"
+base_common_cache_valid_time: 3600
+base_common_packages:
+  - curl
+  - htop
+  - git
+  - zsh
+  - tmux
+  - rsync
+  - whois
+  - openssl
+  - xxd
+  - needrestart
+  - unzip
+  - tcpdump
+  - jq
+  - acl
+  - netcat-openbsd
+
+zsh_plugins:
+  - zsh-autosuggestions
+  - zsh-syntax-highlighting
+
+madmin_ssh_key_pub: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO14ocvxk8wC2zhNsWSPCnq6DMYJgqHeVAT9JgvCc3XY Mork@ProxmoxWS"
+user_admin_account_name: madmin

@@ -1,0 +1,4 @@
+kernel_tuning_packages:
+  - chrony
+
+base_common_hwclock: "UTC"

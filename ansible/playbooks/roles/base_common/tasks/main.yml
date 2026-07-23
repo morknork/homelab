@@ -1,1 +1,57 @@
-- import_tasks: service_account.yml
+- name: Ensure the ansible service account is present and can sudo
+  ansible.builtin.import_tasks: service_account.yml
+
+- name: Set the system timezone
+  community.general.timezone:
+    name: "{{ base_common_timezone }}"
+
+- name: Install baseline packages
+  ansible.builtin.apt:
+    name: "{{ base_common_packages }}"
+    cache_valid_time: "{{ base_common_cache_valid_time }}"
+    state: present
+    update_cache: true
+
+- name: Clear stale package cache
+  ansible.builtin.apt:
+    autoclean: true
+  tags: [maintenance]
+
+- name: Create madmin user
+  ansible.builtin.user:
+    name: "{{ user_admin_account_name }}"
+    password: "{{ user_admin_password_hash }}"
+    shell: "/usr/bin/zsh"
+  no_log: true
+
+- name: Copy .zshrc to user account home
+  ansible.builtin.copy:
+    src: .zshrc
+    dest: "/home/{{ user_admin_account_name }}/.zshrc"
+    owner: "{{ user_admin_account_name }}"
+    group: "{{ user_admin_account_name }}"
+    mode: "0644"
+
+- name: Sync zsh plugins
+  ansible.posix.synchronize:
+    src: "{{ role_path }}/files/zsh-plugins/"
+    dest: "/home/{{ user_admin_account_name }}/.zsh/"
+    delete: true
+    recursive: true
+    rsync_path: "sudo rsync"
+
+- name: Fix ownership of synced plugins
+  ansible.builtin.file:
+    path: "/home/{{ user_admin_account_name }}/.zsh/"
+    state: directory
+    owner: "{{ user_admin_account_name }}"
+    group: "{{ user_admin_account_name }}"
+    recurse: true
+
+- name: Drop .tmux.conf for users
+  ansible.builtin.copy:
+    src: .tmux.conf
+    dest: "/home/{{ user_admin_account_name }}/.tmux.conf"
+    owner: "{{ user_admin_account_name }}"
+    group: "{{ user_admin_account_name }}"
+    mode: "0644"

@@ -1,0 +1,2 @@
+base_server_packages:
+  - ufw
