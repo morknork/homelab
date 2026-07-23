@@ -1,7 +1,16 @@
 - name: Bootstrap svc-ansible (run as madmin -K, first touch only)
   hosts: all
   become: true
+  gather_facts: false
+
   tasks:
+    - name: Esnure Python is present
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt-get update && apt-get install -y python3)
+      changed_when: false
+
+    - name: Gather facts now that Python exists
+      ansible.builtin.setup:
+
     - import_role:
         name: base_common
         tasks_from: service_account.yml

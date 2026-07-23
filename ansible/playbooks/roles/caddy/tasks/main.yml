@@ -1,0 +1,11 @@
+- name: Fetch Caddy key
+  ansible.builtin.get_url:
+    url: "{{ caddy_key_url }}"
+    dest: /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+    mode: "0644"
+  register: caddy_key
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+  when: caddy_key.changed
