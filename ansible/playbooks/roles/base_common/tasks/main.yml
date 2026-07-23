@@ -12,6 +12,11 @@
     state: present
     update_cache: true
 
+#- name: Install pipx packages
+#  community.general.pipx:
+#    name: "{{ item }}"
+#  loop: "{{ base_common_pipx_packages }}"
+
 - name: Clear stale package cache
   ansible.builtin.apt:
     autoclean: true
