@@ -1,11 +1,7 @@
-- name: Test register output
+- name: Test
+  vars: {t: tldr}
   hosts: control
   tasks:
-    - name: Fetch key
-      ansible.builtin.get_url:
-        url: "https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt"
-        dest: /home/madmin
-      register: caddy_key
-
-    - name: Display register
-      ansible.builtin.debug: var=caddy_key
+    - name: Install pipx packages
+      community.general.pipx:
+        name: "{{ t }}"
