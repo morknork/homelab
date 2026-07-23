@@ -1,0 +1,2 @@
+- name: Firewall config
+  ansible.builtin.import_tasks: firewall.yml

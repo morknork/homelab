@@ -1,0 +1,35 @@
+- name: Host Firewall config
+  when: base_server_manage_firewall
+  block:
+    - name: Enable logging
+      community.general.ufw:
+        logging: "on"
+
+    - name: Allow SSH first
+      community.general.ufw:
+        rule: allow
+        port: "{{ base_server_ssh_port }}"
+        proto: tcp
+        comment: "Allow SSH"
+
+    - name: Default deny incoming
+      community.general.ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Default allow outgoing
+      community.general.ufw:
+        direction: outgoing
+        policy: allow
+    
+    - name: Allow DHCP
+      community.general.ufw:
+        rule: allow
+        port: 68
+        proto: udp
+        comment: "Allow inbound DHCP"
+
+    - name: Enable ufw
+      community.general.ufw:
+        state: enabled
+
