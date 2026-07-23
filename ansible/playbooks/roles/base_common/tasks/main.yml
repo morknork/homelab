@@ -12,10 +12,10 @@
     state: present
     update_cache: true
 
-#- name: Install pipx packages
-#  community.general.pipx:
-#    name: "{{ item }}"
-#  loop: "{{ base_common_pipx_packages }}"
+- name: Install pipx packages
+  community.general.pipx:
+    name: "{{ item }}"
+  loop: "{{ base_common_pipx_packages }}"
 
 - name: Clear stale package cache
   ansible.builtin.apt:
@@ -60,3 +60,16 @@
     owner: "{{ user_admin_account_name }}"
     group: "{{ user_admin_account_name }}"
     mode: "0644"
+
+- name: Create directory for journald
+  ansible.builtin.file:
+    path: "/etc/systemd/journald.conf.d"
+    state: directory
+    mode: '0755'
+
+- name: Configure journald persistence and retention
+  ansible.builtin.template:
+    src: journald.conf.j2
+    dest: /etc/systemd/journald.conf.d/99-homelab.conf
+    mode: '0644'
+  notify: Restart journald
