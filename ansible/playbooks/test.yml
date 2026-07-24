@@ -1,7 +1,8 @@
 - name: Test
-  vars: {t: tldr}
-  hosts: control
+  hosts: guests
+  become: true
   tasks:
-    - name: Install pipx packages
-      community.general.pipx:
-        name: "{{ t }}"
+    - name: Update and upgrade
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: full

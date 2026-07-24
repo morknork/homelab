@@ -1,6 +1,11 @@
 # Decide what time service to use (chrony??)
 - name: Ensure time sync is running
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: systemd-timesyncd
     enabled: true
     state: started
+  when: "'vm' in group_names"
+
+- name: Set hardware clock
+  community.general.timezone:
+    hwclock: "{{ base_common_hwclock }}"

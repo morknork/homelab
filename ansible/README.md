@@ -98,7 +98,7 @@ Naming only the SOPS plugin silently disables normal `group_vars` loading.
 
 1. ~~`site.yml` wiring the role map above to inventory groups.~~
 2. ~~`base_common` proper — timezone, baseline packages, service account.~~
-3. `base_server`, `kernel_tuning`.
+3. ~~`base_server`, `kernel_tuning`.~~
 4. Per-service roles, converting existing hand-managed config.
 5. Patching as a separate play
 6. Terraform provisioning

@@ -1,4 +1,5 @@
 base_server_packages:
   - ufw
+  - sshd
 base_server_manage_firewall: true
 base_server_ssh_port: 22

@@ -12,22 +12,43 @@
     state: present
     update_cache: true
 
-- name: Install pipx packages
-  community.general.pipx:
-    name: "{{ item }}"
-  loop: "{{ base_common_pipx_packages }}"
+#- name: Install pipx packages
+#  community.general.pipx:
+#    name: "{{ item }}"
+#  loop: "{{ base_common_pipx_packages }}"
 
 - name: Clear stale package cache
   ansible.builtin.apt:
     autoclean: true
   tags: [maintenance]
 
-- name: Create madmin user
+- name: Create user admin account
   ansible.builtin.user:
     name: "{{ user_admin_account_name }}"
     password: "{{ user_admin_password_hash }}"
     shell: "/usr/bin/zsh"
   no_log: true
+
+- name: Increase user admin sudo timeout to 90 minutes
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/madmin
+    content: "Defaults: madmin timestamp_timeout=90\n"
+    mode: "0440"
+    validate: visudo -cf %s
+
+- name: Add SSH key to authorized users
+  ansible.posix.authorized_key:
+    user: "{{ user_admin_account_name }}"
+    state: present
+    key: "{{ lookup('file', user_admin_ssh_key_public_key_path) }}"
+
+- name: Apply sshd config for hardening
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    validate: /usr/sbin/sshd -t -f %s
+    mode: "0644"
+  notify: Reload sshd
 
 - name: Copy .zshrc to user account home
   ansible.builtin.copy:
@@ -65,11 +86,11 @@
   ansible.builtin.file:
     path: "/etc/systemd/journald.conf.d"
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Configure journald persistence and retention
   ansible.builtin.template:
     src: journald.conf.j2
     dest: /etc/systemd/journald.conf.d/99-homelab.conf
-    mode: '0644'
+    mode: "0644"
   notify: Restart journald

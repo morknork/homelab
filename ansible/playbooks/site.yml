@@ -2,4 +2,13 @@
   hosts: all
   become: true
   roles:
-    - base_common
+    - role: base_common
+      tags: [base, common]
+
+- name: Kernel tuning
+  hosts: vm,proxmox
+  become: true
+  roles:
+    - role: kernel_tuning
+      tags: [base, kernel]
+

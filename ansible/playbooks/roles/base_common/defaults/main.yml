@@ -1,3 +1,8 @@
+service_ssh_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGEkMSeG9VVh3Da3ZaLbhfQqQ48WeSqTgvH9bnVWTJ79 svc-ansible@homelab"
+service_ssh_public_key_path: "/home/madmin/.ssh/homelab/id_ed25519.pub"
+user_admin_account_name: madmin
+user_admin_ssh_key_public_key_path: "/home/madmin/.ssh/id_ed25519.pub"
+
 base_common_timezone: "Australia/Melbourne"
 base_common_cache_valid_time: 3600
 base_common_packages:
@@ -20,17 +25,23 @@ base_common_packages:
   - icdiff
   - tealdeer
   - unattended-upgrades
+  - openssh-client
+  - openssh-server
 
-base_common_pipx_packages:
-  - tldr
+#base_common_pipx_packages:
+#  - tldr
 
 zsh_plugins:
   - zsh-autosuggestions
   - zsh-syntax-highlighting
 
-madmin_ssh_key_pub: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO14ocvxk8wC2zhNsWSPCnq6DMYJgqHeVAT9JgvCc3XY Mork@ProxmoxWS"
-user_admin_account_name: madmin
-
+# journald.conf.j2 vars
 base_common_journal_max_use: "500M"
 base_common_journal_max_file_size: "50M"
 base_common_journal_retention: "1month"
+# sshd_config.j2 vars
+base_common_sshd_PermitRootLogin: "no"
+base_common_sshd_MaxAuthTries: "1"
+base_common_sshd_PubkeyAuthentication: "yes"
+base_common_sshd_PasswordAuthentication: "no"
+base_common_sshd_AllowUsers: "{{ user_admin_account_name }} svc-ansible"
