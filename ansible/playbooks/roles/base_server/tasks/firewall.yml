@@ -21,7 +21,7 @@
       community.general.ufw:
         direction: outgoing
         policy: allow
-    
+
     - name: Allow DHCP
       community.general.ufw:
         rule: allow
@@ -32,4 +32,3 @@
     - name: Enable ufw
       community.general.ufw:
         state: enabled
-

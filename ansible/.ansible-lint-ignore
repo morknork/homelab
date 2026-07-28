@@ -1,3 +1,4 @@
 # This file contains ignores rule violations for ansible-lint
 playbooks/roles/base_common/tasks/main.yml syntax-check[unknown-module] skip
 playbooks/site.yml run-once[task] skip
+group_vars/all/secrets.sops.yaml yaml[line-length] skip
