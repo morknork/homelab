@@ -1,14 +1,34 @@
-- name: Baseline config
+- name: Universal baseline config
   hosts: all
   become: true
+  any_errors_fatal: true
+  pre_tasks:
+    - name: Fail loudly if this play matched nothing meaningful
+      ansible.builtin.assert:
+        that: ansible_play_hosts | length > 1
+        fail_msg: "Only {{ ansible_play_hosts | length }} host(s) matched — check --limit"
+      run_once: true
+      tags: [always, base]
   roles:
-    - role: base_common
-      tags: [base, common]
+    - base_common
 
 - name: Kernel tuning
   hosts: vm,proxmox
   become: true
   roles:
     - role: kernel_tuning
-      tags: [base, kernel]
+      tags: [kernel]
 
+- name: Server baseline
+  hosts: proxmox,guests,!workstation
+  become: true
+  roles:
+    - role: base_server
+      tags: [server, never]
+
+- name: Authentik
+  hosts: authentik01
+  become: true
+  roles:
+    - role: authentik
+      tags: [authentik, never]

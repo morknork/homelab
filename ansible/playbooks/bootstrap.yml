@@ -1,4 +1,5 @@
-- name: Bootstrap svc-ansible (run as madmin -K, first touch only)
+# ansible-playbook playbooks/bootstrap.yml --become-user="madmin" -K
+- name: Bootstrap svc-ansible - first touch only
   hosts: all
   become: true
   gather_facts: false
@@ -14,3 +15,19 @@
     - import_role:
         name: base_common
         tasks_from: service_account.yml
+
+- name: Extract ansible ssh private key from vault and store
+  hosts: control
+  become: true
+  tasks:
+    - name: Create .ssh/homelab
+      ansible.builtin.file:
+        path: ~/.ssh/homelab/
+        state: directory
+        mode: "0700"
+
+    - name: Extract key into directory
+      ansible.builtin.copy:
+        content: "{{ vault_ansible_ssh_private_key }}"
+        dest: ~/.ssh/homelab/id_ed25519
+        mode: "0600"

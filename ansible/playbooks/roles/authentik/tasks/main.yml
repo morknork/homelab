@@ -1,0 +1,23 @@
+- name: Create stack directory
+  ansible.builtin.file:
+    path: "{{ authentik_stack_dir }}"
+    owner: "{{ user_admin_account_name }}"
+    group: "{{ user_admin_account_name }}"
+    state: directory
+    mode: "0755"
+
+- name: Create docker compose
+  ansible.builtin.template:
+    src: authentik_compose.j2
+    dest: "{{ authentik_stack_dir }}"
+    owner: "{{ user_admin_account_name }}"
+    group: "{{ user_admin_account_name }}"
+    mode: "0644"
+
+- name: Create .env
+  ansible.builtin.template:
+    src: .env.j2
+    dest: "{{ authentik_stack_dir }}"
+    owner: "{{ user_admin_account_name }}"
+    group: "{{ user_admin_account_name }}"
+    mode: "0644"

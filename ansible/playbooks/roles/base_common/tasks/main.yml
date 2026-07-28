@@ -7,25 +7,25 @@
 
 - name: Install baseline packages
   ansible.builtin.apt:
-    name: "{{ base_common_packages }}"
+    name: "{{ base_common_base_common_packages }}"
     cache_valid_time: "{{ base_common_cache_valid_time }}"
     state: present
     update_cache: true
 
-#- name: Install pipx packages
-#  community.general.pipx:
-#    name: "{{ item }}"
-#  loop: "{{ base_common_pipx_packages }}"
+# - name: Install pipx packages
+#   community.general.pipx:
+#     name: "{{ item }}"
+#   loop: "{{ base_common_pipx_packages }}"
 
 - name: Clear stale package cache
   ansible.builtin.apt:
     autoclean: true
-  tags: [maintenance]
+  tags: [maintenance, never]
 
 - name: Create user admin account
   ansible.builtin.user:
     name: "{{ user_admin_account_name }}"
-    password: "{{ user_admin_password_hash }}"
+    password: "{{ vault_user_admin_password_hash }}"
     shell: "/usr/bin/zsh"
   no_log: true
 
@@ -40,7 +40,7 @@
   ansible.posix.authorized_key:
     user: "{{ user_admin_account_name }}"
     state: present
-    key: "{{ lookup('file', user_admin_ssh_key_public_key_path) }}"
+    key: "{{ base_common_user_admin_ssh_key_public_key }}"
 
 - name: Apply sshd config for hardening
   ansible.builtin.template:

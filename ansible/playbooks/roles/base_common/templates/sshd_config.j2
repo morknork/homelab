@@ -29,12 +29,12 @@ Include /etc/ssh/sshd_config.d/*.conf
 # Authentication:
 
 LoginGraceTime 30
-PermitRootLogin {{ base_common_sshd_PermitRootLogin }}
+PermitRootLogin {{ base_common_sshd_permitrootlogin }}
 #StrictModes yes
-MaxAuthTries {{ base_common_sshd_MaxAuthTries }}
+MaxAuthTries {{ base_common_sshd_maxauthtries }}
 #MaxSessions 10
 
-PubkeyAuthentication {{ base_common_sshd_PubkeyAuthentication }}
+PubkeyAuthentication {{ base_common_sshd_pubkeyauthentication }}
 
 # Expect .ssh/authorized_keys2 to be disregarded by default in future.
 AuthorizedKeysFile .ssh/authorized_keys
@@ -53,7 +53,7 @@ AuthorizedKeysFile .ssh/authorized_keys
 #IgnoreRhosts yes
 
 # To disable tunneled clear text passwords, change to "no" here!
-PasswordAuthentication {{ base_common_sshd_PasswordAuthentication }}
+PasswordAuthentication {{ base_common_sshd_passwordauthentication }}
 PermitEmptyPasswords no
 
 # Change to "yes" to enable keyboard-interactive authentication.  Depending on
@@ -115,7 +115,7 @@ AcceptEnv LANG LC_* COLORTERM NO_COLOR
 # override default of no subsystems
 Subsystem       sftp    /usr/lib/openssh/sftp-server
 
-AllowUsers {{ base_common_sshd_AllowUsers }}
+AllowUsers {{ base_common_sshd_allowusers }}
 
 # Below has less priority than above
 Include /etc/ssh/sshd_config.d/*.conf

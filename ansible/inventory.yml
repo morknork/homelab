@@ -11,10 +11,13 @@ all:
             adguard01: { ansible_host: 10.0.0.25 }
             caddy01: { ansible_host: 10.0.0.5 }
             authentik01: { ansible_host: 10.0.0.3 }
-            c-dev01: { ansible_host: 10.0.0.28 }
         vm:
           hosts:
             docker-arr01: { ansible_host: 10.0.0.8 }
-    control:
+        workstation:
           hosts:
+            c-dev01: { ansible_host: 10.0.0.28 }
             work-shell01: { ansible_connection: local }
+    control:
+      hosts:
+        work-shell01:

@@ -8,4 +8,4 @@
 
 - name: Set hardware clock
   community.general.timezone:
-    hwclock: "{{ base_common_hwclock }}"
+    hwclock: "{{ kernel_tuning_hwclock }}"

@@ -17,13 +17,13 @@ Working:
 
 ## Inventory groups
 
-| Group     | Members                     |
-| --------- | --------------------------- |
-| `proxmox` | the PVE host                |
-| `vm`      | VM guests                   |
-| `lxc`     | LXC guests                  |
-| `guests`  | parent group — `vm` + `lxc` |
-| `control` | the Ansible control node    |
+| Group         | Members                     |
+| ---------     | --------------------------- |
+| `proxmox`     | the PVE host                |
+| `vm`          | VM guests                   |
+| `lxc`         | LXC guests                  |
+| `guests`      | parent group — `vm` + `lxc` |
+| `workstation` | guests that aren't servers  |
 
 ## Access model
 
@@ -51,16 +51,16 @@ roles/base_common/tasks/service_account.yml   # the tasks
 
 ## Planned role map
 
-| Role            | Targets           | Notes                                             |
-| --------------- | ----------------- | ------------------------------------------------- |
-| `base_common`   | `all`             | universal floor — assumes nothing about host type |
-| `base_server`   | all but `control` | server baseline                                   |
-| `kernel_tuning` | `vm:proxmox`      | LXCs share the host kernel, so excluded           |
-| `caddy`         | `caddy`           |                                                   |
-| `authentik`     | `authentik`       | pulls `docker` via meta                           |
-| `arr`           | `arr`             | pulls `docker` via meta                           |
-| `jellyfin`      | `jellyfin`        |                                                   |
-| `adguard`       | `adguard`         |                                                   |
+| Role            | Targets                | Notes                                             |
+| --------------- | -----------------------| ------------------------------------------------- |
+| `base_common`   | `all`                  | universal floor — assumes nothing about host type |
+| `base_server`   | `all` but `workstation`| server baseline                                   |
+| `kernel_tuning` | `vm:proxmox`           | LXCs share the host kernel, so excluded           |
+| `caddy`         | `caddy`                |                                                   |
+| `authentik`     | `authentik`            | pulls `docker` via meta                           |
+| `arr`           | `arr`                  | pulls `docker` via meta                           |
+| `jellyfin`      | `jellyfin`             |                                                   |
+| `adguard`       | `adguard`              |                                                   |
 
 `docker` is **not** targeted at hosts. It is declared as a dependency in each
 containerised service's `meta/main.yml`, so the requirement travels with the
@@ -80,8 +80,7 @@ drift enforcer is only worth having if a green run genuinely means nothing moved
 
 ## Secrets
 
-SOPS with age. Private keys live in `~/.config/sops/age/keys.txt` on the control
-node — one file, multiple identities, one per line.
+SOPS with age. Private keys liveon the work shell node — one file, multiple identities, one per line.
 Recipients are set per-repo by `.sops.yaml` creation rules.
 
 Edit with `sops edit group_vars/all/secrets.sops.yaml`.
@@ -104,17 +103,14 @@ Naming only the SOPS plugin silently disables normal `group_vars` loading.
 6. Terraform provisioning
 7. Timed full rebuild drill.
 
-Patching must stay out of `base_common`. Roles converge to a state _I_ define and
-should be boring to re-run; patching converges to a moving target defined
-upstream. Mixing them means `site.yml` is no longer safe to run casually.
+Patching must stay out of `base_common`. Roles converge to a defined state and
+should be boring to re-run, patching converges to a moving target. 
+Mixing them means `site.yml` is no longer safe to run casually.
 
 **Reboots.** Not yet designed. Kernel and libc upgrades need a restart
 (`/var/run/reboot-required`). Needs an ordering and batching model — `serial:`
 — so the fleet doesn't restart at once, and the PVE host handled separately since
 its reboot takes every guest with it.
-
-**`update_password` for `madmin`.** Enforce the hash every run, or only at account
-creation. Matters because the account already exists fleet-wide.
 
 ## Learned Lessons
 
