@@ -5,7 +5,7 @@
   pre_tasks:
     - name: Fail loudly if this play matched nothing meaningful
       ansible.builtin.assert:
-        that: ansible_play_hosts | length > 1
+        that: ansible_play_hosts | length > 0
         fail_msg: "Only {{ ansible_play_hosts | length }} host(s) matched — check --limit"
       run_once: true
       tags: [always, base]

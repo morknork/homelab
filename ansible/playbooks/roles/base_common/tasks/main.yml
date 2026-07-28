@@ -7,7 +7,7 @@
 
 - name: Install baseline packages
   ansible.builtin.apt:
-    name: "{{ base_common_base_common_packages }}"
+    name: "{{ base_common_packages }}"
     cache_valid_time: "{{ base_common_cache_valid_time }}"
     state: present
     update_cache: true
@@ -32,7 +32,7 @@
 - name: Increase user admin sudo timeout to 90 minutes
   ansible.builtin.copy:
     dest: /etc/sudoers.d/madmin
-    content: "Defaults: madmin timestamp_timeout=90\n"
+    content: "Defaults: {{ user_admin_account_name }} timestamp_timeout=90\n"
     mode: "0440"
     validate: visudo -cf %s
 
@@ -40,7 +40,7 @@
   ansible.posix.authorized_key:
     user: "{{ user_admin_account_name }}"
     state: present
-    key: "{{ base_common_user_admin_ssh_key_public_key }}"
+    key: "{{ user_admin_ssh_public_key }}"
 
 - name: Apply sshd config for hardening
   ansible.builtin.template:

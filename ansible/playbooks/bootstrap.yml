@@ -1,4 +1,4 @@
-# ansible-playbook playbooks/bootstrap.yml --become-user="madmin" -K
+# ansible-playbook playbooks/bootstrap.yml -u madmin -K
 - name: Bootstrap svc-ansible - first touch only
   hosts: all
   become: true
@@ -12,7 +12,8 @@
     - name: Gather facts now that Python exists
       ansible.builtin.setup:
 
-    - import_role:
+    - name: Import tasks from service_account
+      ansible.builtin.import_role:
         name: base_common
         tasks_from: service_account.yml
 
@@ -22,7 +23,7 @@
   tasks:
     - name: Create .ssh/homelab
       ansible.builtin.file:
-        path: ~/.ssh/homelab/
+        path: /home/{{ user_admin_account_name }}/.ssh/homelab/
         state: directory
         mode: "0700"
 

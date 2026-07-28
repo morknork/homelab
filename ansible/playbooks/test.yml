@@ -1,8 +1,7 @@
 - name: Test
-  hosts: guests
-  become: true
+  hosts: control
+  gather_facts: false
   tasks:
-    - name: Update and upgrade
-      ansible.builtin.apt:
-        update_cache: true
-        upgrade: full
+    - name: caddy ip
+      ansible.builtin.debug:
+        msg: "Defaults: {{ user_admin_account_name }} timestamp_timeout=90\n"

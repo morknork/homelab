@@ -36,7 +36,7 @@ base_common_journal_max_file_size: "50M"
 base_common_journal_retention: "1month"
 # sshd_config.j2 vars
 base_common_sshd_permitrootlogin: "no"
-base_common_sshd_maxauthtries: "1"
+base_common_sshd_maxauthtries: "3"
 base_common_sshd_pubkeyauthentication: "yes"
 base_common_sshd_passwordauthentication: "no"
 base_common_sshd_allowusers: "{{ user_admin_account_name }} svc-ansible"
