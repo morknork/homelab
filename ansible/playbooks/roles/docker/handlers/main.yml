@@ -1,0 +1,5 @@
+- name: Reload docker_fw
+  ansible.builtin.systemd_service:
+    name: docker_fw
+    daemon_reload: true
+    state: restarted

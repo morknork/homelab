@@ -5,7 +5,7 @@
   gather_facts: false
 
   tasks:
-    - name: Esnure Python is present
+    - name: Ensure Python is present
       ansible.builtin.raw: test -e /usr/bin/python3 || (apt-get update && apt-get install -y python3)
       changed_when: false
 

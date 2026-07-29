@@ -1,0 +1,13 @@
+[Unit]
+Description=Docker firewall rules
+After=docker.service
+Requires=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/docker_fw.sh
+
+[Install]
+WantedBy=docker.service

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CHAIN=DOCKER-FW
+UPLINKS=({{ docker_fw_uplinks | map('quote') | join(' ') }})
+ALLOWED_IPS=({{ docker_fw_allowed_sources | map('quote') | join(' ') }})
+
+for iface in "${UPLINKS[@]}"; do
+    if ! ip link show "$iface" >/dev/null 2>&1; then
+        echo "interface $iface not found — refusing to apply a partial ruleset" >&2
+        exit 1
+    fi
+done
+
+iptables -N "$CHAIN" 2>/dev/null || true
+iptables -F "$CHAIN"
+
+iptables -A "$CHAIN" -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+for ip in "${ALLOWED_IPS[@]}"; do
+    iptables -A "$CHAIN" -s "$ip" -j RETURN
+done
+iptables -A "$CHAIN" -j DROP
+
+for iface in "${UPLINKS[@]}"; do
+    while iptables -D DOCKER-USER -i "$iface" -j "$CHAIN" 2>/dev/null; do :; done
+    iptables -I DOCKER-USER 1 -i "$iface" -j "$CHAIN"
+done

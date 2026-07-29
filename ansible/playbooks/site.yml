@@ -31,4 +31,4 @@
   become: true
   roles:
     - role: authentik
-      tags: [authentik, never]
+      tags: [authentik]

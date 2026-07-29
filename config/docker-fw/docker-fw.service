@@ -1,5 +1,5 @@
 [Unit]
-Description=arr stack DOCKER-USER firewall rules
+Description=Docker firewall rules
 After=docker.service
 Requires=docker.service
 PartOf=docker.service
@@ -7,7 +7,7 @@ PartOf=docker.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/local/sbin/docker-user-fw.sh
+ExecStart=/usr/local/sbin/docker-fw.sh
 
 [Install]
 WantedBy=docker.service

@@ -1,0 +1,54 @@
+- name: Discover uplinks when not pinned
+  when: docker_fw_uplinks | default([]) | length == 0
+  block:
+    - name: Verify facts are available for discovery
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['interfaces'] is defined
+        fail_msg: >-
+          docker_fw_uplinks is not set and facts are not gathered. Either pin
+          docker_fw_uplinks in host_vars or run this role with gather_facts: true.
+
+    - name: Discover uplinks
+      ansible.builtin.set_fact:
+        docker_fw_uplinks: "{{ ansible_facts['interfaces'] | reject('match', '^(lo|docker|veth|br)') | list }}"
+
+    - name: Certify discovery was unambiguous
+      ansible.builtin.assert:
+        that:
+          - docker_fw_uplinks | length == 1
+        fail_msg: >-
+          Uplink discovery found {{ docker_fw_uplinks | length }} candidates
+          ({{ docker_fw_uplinks | join(', ') }}).
+
+- name: Certify uplink is set before writing firewall config
+  ansible.builtin.assert:
+    that:
+      - docker_fw_uplinks | default([]) | length > 0
+    fail_msg: >-
+      docker_fw_uplinks is empty. Pin it in host_vars for this host.
+
+- name: Deploy firewall script
+  ansible.builtin.template:
+    src: docker_fw.sh.j2
+    dest: /usr/local/sbin/docker_fw.sh
+    owner: root
+    group: root
+    mode: '0700'
+  notify: Reload docker_fw
+
+- name: Deploy service unit
+  ansible.builtin.template:
+    src: docker_fw.service.j2
+    dest: /etc/systemd/system/docker_fw.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload docker_fw
+
+- name: Enable and start docker_fw
+  ansible.builtin.systemd_service:
+    name: docker_fw
+    daemon_reload: true
+    enabled: true
+    state: started

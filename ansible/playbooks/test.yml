@@ -1,7 +1,7 @@
 - name: Test
-  hosts: control
-  gather_facts: false
+  hosts: authentik01
+  gather_facts: true
   tasks:
     - name: caddy ip
       ansible.builtin.debug:
-        msg: "Defaults: {{ user_admin_account_name }} timestamp_timeout=90\n"
+        msg: "{{ ansible_facts['virtualization_type'] }} "

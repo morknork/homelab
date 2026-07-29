@@ -1,0 +1,3 @@
+docker_fw_uplinks: []
+docker_fw_allowed_sources:
+  - 10.0.0.5 # caddy reverse proxy
