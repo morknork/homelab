@@ -1,0 +1,12 @@
+base_server_firewall_allow_custom:
+  - {
+      port: 8112,
+      proto: tcp,
+      from: 10.0.0.5/32,
+      comment: "Deluge via Gluetun via Caddy",
+    }
+  - { port: 7878, proto: tcp, from: 10.0.0.5/32, comment: "Radarr via Caddy" }
+  - { port: 8989, proto: tcp, from: 10.0.0.5/32, comment: "Sonarr via Caddy" }
+  - { port: 9696, proto: tcp, from: 10.0.0.5/32, comment: "Prowlarr via Caddy" }
+  - { port: 7575, proto: tcp, from: 10.0.0.5/32, comment: "Homarr via Caddy" }
+  - { port: 5055, proto: tcp, from: 10.0.0.5/32, comment: "Seerr via Caddy" }

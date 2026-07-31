@@ -24,7 +24,7 @@
   become: true
   roles:
     - role: base_server
-      tags: [server, never]
+      tags: [server]
 
 - name: Authentik
   hosts: authentik01

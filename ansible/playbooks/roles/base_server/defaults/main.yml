@@ -1,5 +1,18 @@
 base_server_packages:
-  - ufw
+  - nftables
   - ca-certificates
 base_server_manage_firewall: true
 base_server_ssh_port: 22
+
+# firewall rules
+base_server_firewall_allow_baseline:
+  - {
+      port: "{{ base_server_ssh_port }}",
+      proto: tcp,
+      from: 10.0.0.0/24,
+      comment: "Management SSH",
+    }
+  - { port: 68, proto: udp, from: 10.0.0.25/32, comment: "DHCP from Adguard" }
+
+# custom rules over-ridden at host_vars level
+base_server_firewall_allow_custom: []

@@ -1,0 +1,28 @@
+table inet filter
+delete table inet filter
+
+table inet filter {
+  chain input {
+    type filter hook input priority filter; policy drop;
+
+    ct state established,related accept
+    ct state invalid drop
+    iif lo accept
+    ip protocol icmp accept
+{% for rule in base_server_firewall_allow_baseline %}
+    {{rule.proto | default('tcp', true)}} dport {{rule.port}} 
+    {{- ' ip saddr ' ~ rule.from if rule.from else '' }} counter accept 
+    {%- if rule.comment %} comment "{{ rule.comment }}"{% endif %}
+
+{% endfor %}
+{% if base_server_firewall_allow_custom %}
+{% for rule in base_server_firewall_allow_custom %}
+    {{rule.proto | default('tcp', true)}} dport {{rule.port}} 
+    {{- ' ip saddr ' ~ rule.from if rule.from else '' }} counter accept 
+    {%- if rule.comment %} comment "{{ rule.comment }}"{% endif %}
+
+{% endfor %}
+{% endif %}
+{# log prefix "nft-drop " level info counter drop #}
+  }
+}

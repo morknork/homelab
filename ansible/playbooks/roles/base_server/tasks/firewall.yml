@@ -1,34 +1,45 @@
 - name: Host Firewall config
   when: base_server_manage_firewall
   block:
-    - name: Enable logging
-      community.general.ufw:
-        logging: "on"
+    - name: Validate firewall rule entries
+      ansible.builtin.assert:
+        that:
+          - item.keys() | sort == ['comment', 'from', 'port', 'proto']
+          - item.port | string | length > 0
+          - item.proto in ['', 'tcp', 'udp']
+        fail_msg: "Bad firewall rule on {{ inventory_hostname }}: {{ item }}"
+        quiet: true
+      loop: "{{ base_server_firewall_allow_baseline + base_server_firewall_allow_custom }}"
+      loop_control:
+        label: "{{ item.comment | default('unnamed') }}"
 
-    - name: Allow SSH first
-      community.general.ufw:
-        rule: allow
-        port: "{{ base_server_ssh_port }}"
-        proto: tcp
-        comment: "Allow SSH"
+    - name: Check nftables is usable in this container
+      ansible.builtin.command: nft add table inet probe
+      register: base_server_firewall_nft_probe
+      changed_when: false
+      failed_when: false
 
-    - name: Default deny incoming
-      community.general.ufw:
-        direction: incoming
-        policy: deny
+    - name: Remove probe table
+      ansible.builtin.command: nft delete table inet probe
+      changed_when: false
+      when: base_server_firewall_nft_probe.rc == 0
 
-    - name: Default allow outgoing
-      community.general.ufw:
-        direction: outgoing
-        policy: allow
+    - name: Manage nftables ruleset
+      when: base_server_firewall_nft_probe.rc == 0
+      block:
+        - name: Ensure nftables service is enabled and active
+          ansible.builtin.systemd_service:
+            name: nftables
+            enabled: true
+            state: started
 
-    - name: Allow DHCP
-      community.general.ufw:
-        rule: allow
-        port: 68
-        proto: udp
-        comment: "Allow inbound DHCP"
-
-    - name: Enable ufw
-      community.general.ufw:
-        state: enabled
+        - name: Apply nftables.conf template
+          ansible.builtin.template:
+            src: nftables.conf.j2
+            dest: /etc/nftables.conf
+            owner: root
+            group: root
+            mode: "0644"
+            validate: "nft -c -f %s"
+            backup: true
+          notify: Reload nftables

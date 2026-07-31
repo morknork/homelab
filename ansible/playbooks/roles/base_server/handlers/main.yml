@@ -1,0 +1,5 @@
+- name: Reload nftables
+  ansible.builtin.systemd.service:
+    name: nftables
+    state: reloaded
+    enabled: true

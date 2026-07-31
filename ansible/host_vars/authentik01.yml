@@ -1,0 +1,5 @@
+base_server_firewall_allow_custom:
+  - { port: 80, proto: tcp, from: 10.0.0.8/32, comment: "HTTP from Homarr" }
+docker_fw_allowed_sources:
+  - 10.0.0.5 # caddy reverse proxy
+  - 10.0.0.8 # homarr integration
