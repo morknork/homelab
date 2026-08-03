@@ -1,4 +1,4 @@
-# ansible-playbook playbooks/bootstrap.yml -u madmin -K
+# ansible-playbook playbooks/bootstrap.yml -e ansible_user=madmin -K --ask-pass
 - name: Bootstrap svc-ansible - first touch only
   hosts: all
   become: true

@@ -1,6 +1,6 @@
 base_server_firewall_allow_custom:
   - { port: 80, proto: tcp, from: 10.0.0.5/32, comment: "HTTP from Caddy" }
-  - { port: 80, proto: tcp, from: 10.0.0.8/32, comment: "HTTP from Homarr" }
+  - { port: 80, proto: tcp, from: 10.0.0.35/32, comment: "HTTP from Homarr" }
   - { port: 67, proto: udp, from: "", comment: "Allow DHCP incoming" }
   - {
       port: 53,

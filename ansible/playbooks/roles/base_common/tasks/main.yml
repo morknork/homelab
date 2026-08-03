@@ -25,6 +25,8 @@
 - name: Create user admin account
   ansible.builtin.user:
     name: "{{ user_admin_account_name }}"
+    groups: sudo
+    append: true
     password: "{{ vault_user_admin_password_hash }}"
     shell: "/usr/bin/zsh"
   no_log: true

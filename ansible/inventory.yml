@@ -2,15 +2,17 @@ all:
   children:
     proxmox:
       hosts:
-        pve01: { ansible_host: 10.0.0.21 }
+        mini-pc-pve: { ansible_host: 10.0.0.21 }
+        nas-pve: { ansible_host: 10.0.0.32 }
     guests:
       children:
         lxc:
           hosts:
-            jellyfin01: { ansible_host: 10.0.0.9 }
             adguard01: { ansible_host: 10.0.0.25 }
             caddy01: { ansible_host: 10.0.0.5 }
             authentik01: { ansible_host: 10.0.0.3 }
+            arr02: { ansible_host: 10.0.0.35 }
+            jellyfin01: { ansible_host: 10.0.0.34 }
         vm:
           hosts:
             docker-arr01: { ansible_host: 10.0.0.8 }

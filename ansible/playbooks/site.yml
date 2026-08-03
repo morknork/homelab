@@ -32,3 +32,10 @@
   roles:
     - role: authentik
       tags: [authentik]
+
+- name: Arr stack
+  hosts: arr02
+  become: true
+  roles:
+    - role: arr_stack
+      tags: [arr]
