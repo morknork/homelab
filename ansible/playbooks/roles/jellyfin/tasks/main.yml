@@ -1,0 +1,126 @@
+# ---------------------------------------------------------------------
+# Preflight. These run before anything is installed so a misconfigured
+# container fails the play instead of quietly starting a Jellyfin that
+# software-transcodes on the 4690.
+# ---------------------------------------------------------------------
+
+- name: Stat the render node
+  ansible.builtin.stat:
+    path: "{{ jellyfin_render_node }}"
+  register: jellyfin_render_stat
+
+- name: Assert the render node was passed through
+  ansible.builtin.assert:
+    that:
+      - jellyfin_render_stat.stat.exists
+      - jellyfin_render_stat.stat.ischr | default(false)
+    fail_msg: >-
+      {{ jellyfin_render_node }} missing or not a character device.
+      Check i915 is loaded on the host and that dev0 in the container
+      config binds the node by name.
+
+- name: Assert the render node carries the expected gid
+  ansible.builtin.assert:
+    that: jellyfin_render_stat.stat.gid == jellyfin_render_gid
+    fail_msg: >-
+      {{ jellyfin_render_node }} is gid
+      {{ jellyfin_render_stat.stat.gid }}, expected
+      {{ jellyfin_render_gid }}. The host render gid collides with an
+      in-container group, so dev0 must re-stamp it.
+
+- name: Stat the media bind mount
+  ansible.builtin.stat:
+    path: "{{ jellyfin_media_path }}"
+  register: jellyfin_media_stat
+
+- name: Assert the media bind mount is present
+  ansible.builtin.assert:
+    that:
+      - jellyfin_media_stat.stat.exists
+      - jellyfin_media_stat.stat.isdir
+    fail_msg: >-
+      {{ jellyfin_media_path }} missing. An absent bind mount presents
+      as an empty directory, so this check is the only thing standing
+      between you and an empty library.
+
+# ---------------------------------------------------------------------
+# Repo and package
+# ---------------------------------------------------------------------
+
+- name: Add the Jellyfin apt repository
+  ansible.builtin.deb822_repository:
+    name: jellyfin
+    types: [deb]
+    uris: "{{ jellyfin_repo_uri }}"
+    suites: "{{ jellyfin_repo_suite }}"
+    components: "{{ jellyfin_repo_components }}"
+    architectures: [amd64]
+    signed_by: "{{ jellyfin_repo_key }}"
+    state: present
+    enabled: true
+  register: jellyfin_repo
+
+- name: Install Jellyfin and the VA-API stack
+  ansible.builtin.apt:
+    name: "{{ jellyfin_packages }}"
+    state: present
+    update_cache: "{{ jellyfin_repo.changed }}"
+
+# ---------------------------------------------------------------------
+# Groups. Both are created with explicit gids because they have to line
+# up with numbers set outside this container — the render node's stamped
+# gid and the host's media ownership.
+# ---------------------------------------------------------------------
+
+- name: Ensure the render and media groups exist
+  ansible.builtin.group:
+    name: "{{ item.name }}"
+    gid: "{{ item.gid }}"
+    state: present
+  loop:
+    - { name: "{{ jellyfin_render_group }}", gid: "{{ jellyfin_render_gid }}" }
+    - { name: "{{ jellyfin_media_group }}", gid: "{{ jellyfin_media_gid }}" }
+  loop_control:
+    label: "{{ item.name }}"
+
+# append: true matters. Without it Ansible replaces the whole
+# supplementary set every converge and strips whatever the package
+# postinst added.
+- name: Add the jellyfin user to the render and media groups
+  ansible.builtin.user:
+    name: jellyfin
+    groups:
+      - "{{ jellyfin_render_group }}"
+      - "{{ jellyfin_media_group }}"
+    append: true
+  notify: Restart jellyfin
+
+# ---------------------------------------------------------------------
+# systemd
+# ---------------------------------------------------------------------
+
+- name: Create the jellyfin systemd drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/jellyfin.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Template the VA-API environment drop-in
+  ansible.builtin.template:
+    src: env.conf.j2
+    dest: /etc/systemd/system/jellyfin.service.d/env.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart jellyfin
+
+- name: Enable and start jellyfin
+  ansible.builtin.systemd_service:
+    name: jellyfin
+    enabled: true
+    state: started
+    daemon_reload: true

@@ -1,0 +1,29 @@
+# Repo. Suite is pinned explicitly rather than derived from
+# ansible_facts.distribution_release so you can hold it back if
+# Jellyfin's trixie line ever runs ahead of where you want to be.
+jellyfin_repo_uri: https://repo.jellyfin.org/debian
+jellyfin_repo_suite: trixie
+jellyfin_repo_components: [main]
+jellyfin_repo_key: https://repo.jellyfin.org/jellyfin_team.gpg.key
+
+# GPU. renderD128 by name, not by-path: libdrm resolves an fd back to
+# its canonical node name and that lookup fails if the node is bound
+# under a different name.
+jellyfin_render_node: /dev/dri/renderD128
+jellyfin_render_group: renderdev
+jellyfin_render_gid: 5000
+
+# Media. Host side is root:666 with setgid; the idmap maps host 666
+# straight through to container 666.
+jellyfin_media_group: media
+jellyfin_media_gid: 666
+jellyfin_media_path: /data
+
+# i965 is correct for Haswell. intel-media-va-driver is Broadwell+
+# and its iHD probe will fail on this hardware.
+jellyfin_vaapi_driver: i965
+
+jellyfin_packages:
+  - jellyfin
+  - i965-va-driver
+  - vainfo

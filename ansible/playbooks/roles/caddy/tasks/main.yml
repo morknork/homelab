@@ -107,12 +107,6 @@
     - Reload systemd
     - Restart caddy
 
-- name: Remove the old env drop-in
-  ansible.builtin.file:
-    path: /etc/systemd/system/caddy.service.d/env.conf
-    state: absent
-  notify: Reload systemd
-
 - name: Enable and start caddy
   ansible.builtin.systemd_service:
     name: caddy

@@ -3,8 +3,6 @@
 caddy_arch: amd64
 caddy_plugins:
   - "github.com/caddy-dns/cloudflare@v0.2.1"
-# Blank it, run the role, take the sha256 from the failure, pin it, commit.
-# That commit is the upgrade record.
 caddy_bin_checksum: "sha256:5aa8676c2f786e318c792d0143e2052705f1d3b405ee229d52cf469eb543f7af"
 caddy_bin_path: /usr/local/bin/caddy
 
@@ -18,7 +16,7 @@ caddy_group: caddy
 # --- site --------------------------------------------------------------
 caddy_base_domain: morknork.com
 
-# One alias -> IP map. Shared boxes appear once; renumbering is one edit.
+# Alias -> IP map
 caddy_hosts:
   mini_pc_pve: "10.0.0.21" # mini-pc-pve
   nas_pve: "10.0.0.32" # nas-pve

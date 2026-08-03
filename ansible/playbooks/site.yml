@@ -46,3 +46,10 @@
   roles:
     - role: caddy
       tags: [caddy]
+
+- name: Jellyfin
+  hosts: jellyfin01
+  become: true
+  roles:
+    - role: jellyfin
+      tags: [jellyfin]
