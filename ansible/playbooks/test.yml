@@ -2,6 +2,10 @@
   hosts: authentik01
   gather_facts: true
   tasks:
-    - name: caddy ip
-      ansible.builtin.debug:
-        msg: "{{ ansible_facts['virtualization_type'] }} "
+    - caddy_arch: amd64
+      caddy_plugins:
+        - "github.com/caddy-dns/cloudflare@v0.2.1"
+      # The pin that actually bites. Blank it, run the role, read the sha256 the
+      # download task reports, paste it back here, commit. That commit IS the upgrade.
+      caddy_bin_checksum: "sha256:REPLACE_ME"
+      caddy_bin_path: /usr/local/bin/caddy

@@ -1,0 +1,32 @@
+[Unit]
+Description=Caddy
+Documentation=https://caddyserver.com/docs/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ caddy_user }}
+Group={{ caddy_group }}
+# Not Environment= — that leaks to `systemctl show` for any local user.
+EnvironmentFile={{ caddy_env_file }}
+# Non-secret. Caddy appends /caddy, giving {{ caddy_data_dir }}
+Environment=XDG_DATA_HOME=/var/lib
+
+# No --environ. That flag dumps every env var, token included, to journald.
+ExecStart={{ caddy_bin_path }} run --config {{ caddy_conf_dir }}/Caddyfile
+ExecReload={{ caddy_bin_path }} reload --config {{ caddy_conf_dir }}/Caddyfile --force
+
+# Bind 80/443 without root and without setcap on the binary — setcap is wiped
+# every time the file is replaced, this survives upgrades.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+StateDirectory=caddy
+LimitNOFILE=1048576
+Restart=on-abnormal
+
+[Install]
+WantedBy=multi-user.target

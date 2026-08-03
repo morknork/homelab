@@ -39,3 +39,10 @@
   roles:
     - role: arr_stack
       tags: [arr]
+
+- name: Caddy
+  hosts: caddy01
+  become: true
+  roles:
+    - role: caddy
+      tags: [caddy]

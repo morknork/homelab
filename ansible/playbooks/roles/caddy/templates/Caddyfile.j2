@@ -1,0 +1,54 @@
+# {{ ansible_managed }}
+*.{{ caddy_base_domain }} {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+		# Query Cloudflare directly for the _acme-challenge TXT rather than
+		# trusting the local resolver. AdGuard sitting in the DNS path makes
+		# stale negative caching a real renewal failure mode.
+		resolvers 1.1.1.1
+	}
+
+{% for svc in caddy_services %}
+	@{{ svc.name }} host {{ svc.name }}.{{ caddy_base_domain }}
+	handle @{{ svc.name }} {
+{% if svc.forward_auth | default(false) %}
+		# `route` pins directive order to as-written. Outside a route, Caddy
+		# sorts by its own precedence table and forward_auth would not
+		# reliably run before reverse_proxy. Load-bearing, not decoration.
+		route {
+			# Outpost endpoints bypass the auth check, or you get a loop.
+			reverse_proxy /outpost.goauthentik.io/* {{ caddy_authentik_outpost }}
+			forward_auth {{ caddy_authentik_outpost }} {
+				uri /outpost.goauthentik.io/auth/caddy
+				copy_headers X-Authentik-Username X-Authentik-Groups X-Authentik-Email X-Authentik-Name X-Authentik-Uid
+			}
+			reverse_proxy {{ svc.upstream }} {
+{% if svc.basic_auth_env is defined %}
+				header_up Authorization "Basic {env.{{ svc.basic_auth_env }}}"
+{% endif %}
+{% if svc.tls_upstream | default(false) %}
+				transport http {
+					tls_insecure_skip_verify
+				}
+{% endif %}
+			}
+		}
+{% else %}
+		reverse_proxy {{ svc.upstream }} {
+{% if svc.tls_upstream | default(false) %}
+			transport http {
+				tls_insecure_skip_verify
+			}
+{% endif %}
+		}
+{% endif %}
+	}
+
+{% endfor %}
+	# The wildcard cert means Caddy answers for every subdomain, including
+	# ones you never configured. Without this, a typo'd or squatted name
+	# completes a valid TLS handshake and gets a default response.
+	handle {
+		abort
+	}
+}

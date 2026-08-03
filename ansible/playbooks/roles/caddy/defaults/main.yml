@@ -1,1 +1,75 @@
-caddy_key_url: https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt 
+---
+# --- binary provenance -------------------------------------------------
+caddy_arch: amd64
+caddy_plugins:
+  - "github.com/caddy-dns/cloudflare@v0.2.1"
+# Blank it, run the role, take the sha256 from the failure, pin it, commit.
+# That commit is the upgrade record.
+caddy_bin_checksum: "sha256:5aa8676c2f786e318c792d0143e2052705f1d3b405ee229d52cf469eb543f7af"
+caddy_bin_path: /usr/local/bin/caddy
+
+# --- layout ------------------------------------------------------------
+caddy_conf_dir: /opt/caddy
+caddy_env_file: /opt/caddy/caddy.env
+caddy_data_dir: /var/lib/caddy # ACME account key lives here — back it up
+caddy_user: caddy
+caddy_group: caddy
+
+# --- site --------------------------------------------------------------
+caddy_base_domain: morknork.com
+
+# One alias -> IP map. Shared boxes appear once; renumbering is one edit.
+caddy_hosts:
+  mini_pc_pve: "10.0.0.21" # mini-pc-pve
+  nas_pve: "10.0.0.32" # nas-pve
+  dcm_pve: "10.0.0.33" # dcm-pve
+  authentik: "10.0.0.3" # authentik01
+  adguard: "10.0.0.25" # adguard01
+  arr: "10.0.0.35" # arr02
+  jellyfin: "10.0.0.34" # jellyfin01
+
+caddy_authentik_outpost: "{{ caddy_hosts.authentik }}:9000"
+
+# name        -> subdomain under caddy_base_domain
+# upstream    -> where it goes
+# forward_auth -> gate behind the Authentik outpost
+# tls_upstream -> upstream speaks HTTPS with a cert we don't trust
+# basic_auth_env -> inject Basic auth toward the upstream from this env var
+caddy_services:
+  - name: pdm
+    upstream: "{{ caddy_hosts.dcm_pve }}:8443"
+    tls_upstream: true
+
+  - name: mini-pc
+    upstream: "{{ caddy_hosts.mini_pc_pve }}:8006"
+    tls_upstream: true
+
+  - name: nas
+    upstream: "{{ caddy_hosts.nas_pve }}:8006"
+    tls_upstream: true
+
+  - name: auth
+    upstream: "{{ caddy_hosts.authentik }}:9000"
+    # no forward_auth — this is the thing doing the authenticating
+
+  - name: adguard
+    upstream: "{{ caddy_hosts.adguard }}:80"
+    forward_auth: true
+    basic_auth_env: ADGUARD_CREDS
+
+  - { name: homarr, upstream: "{{ caddy_hosts.arr }}:7575" }
+  - { name: jellyseerr, upstream: "{{ caddy_hosts.arr }}:5055" }
+  - { name: jellyfin, upstream: "{{ caddy_hosts.jellyfin }}:8096" }
+
+  - { name: radarr, upstream: "{{ caddy_hosts.arr }}:7878", forward_auth: true }
+  - { name: sonarr, upstream: "{{ caddy_hosts.arr }}:8989", forward_auth: true }
+  - {
+      name: prowlarr,
+      upstream: "{{ caddy_hosts.arr }}:9696",
+      forward_auth: true,
+    }
+  - {
+      name: torrents,
+      upstream: "{{ caddy_hosts.arr }}:8080",
+      forward_auth: true,
+    }

@@ -1,11 +1,121 @@
-- name: Fetch Caddy key
-  ansible.builtin.get_url:
-    url: "{{ caddy_key_url }}"
-    dest: /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-    mode: "0644"
-  register: caddy_key
+---
+# --- prechecks ---------------------------------------------------------
+- name: Fail fast on unsupported platform
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.os_family == "Debian"
+      - ansible_facts.architecture == "x86_64"
+    fail_msg: "Role assumes Debian/amd64; adjust caddy_arch and the download URL."
 
-- name: Update apt cache
-  ansible.builtin.apt:
-    update_cache: true
-  when: caddy_key.changed
+- name: Require secrets
+  ansible.builtin.assert:
+    that:
+      - vault_cf_api_token is defined and vault_cf_api_token | length > 0
+      - vault_adguard_user is defined
+      - vault_adguard_password is defined
+    fail_msg: "Secrets not decrypted or vars missing."
+  no_log: true # a failed assert otherwise prints the values
+
+- name: Require a real checksum
+  ansible.builtin.assert:
+    that: "'REPLACE_ME' not in caddy_bin_checksum"
+    fail_msg: "caddy_bin_checksum unset. Download once, sha256sum it, pin it."
+
+# Cheap replacement for the inventory assert: catches an alias typo in
+# caddy_services at task 4 instead of at template-render time on task 11.
+- name: Every service resolves to a real address
+  ansible.builtin.assert:
+    that: item.upstream is match('^[0-9.]+:[0-9]+$')
+    fail_msg: "{{ item.name }} upstream '{{ item.upstream }}' is not host:port — bad caddy_hosts key?"
+  loop: "{{ caddy_services }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# --- user + dirs -------------------------------------------------------
+- name: Create caddy system group
+  ansible.builtin.group:
+    name: "{{ caddy_group }}"
+    system: true
+
+- name: Create caddy system user
+  ansible.builtin.user:
+    name: "{{ caddy_user }}"
+    group: "{{ caddy_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+
+- name: Create config directory
+  ansible.builtin.file:
+    path: "{{ caddy_conf_dir }}"
+    state: directory
+    owner: root
+    group: "{{ caddy_group }}"
+    mode: "0750"
+
+# --- binary ------------------------------------------------------------
+- name: Download pinned Caddy build with DNS plugin
+  ansible.builtin.get_url:
+    url: >-
+      https://caddyserver.com/api/download?os=linux&arch={{ caddy_arch }}
+      {%- for p in caddy_plugins %}&p={{ p | urlencode }}{% endfor %}
+    dest: "{{ caddy_bin_path }}"
+    checksum: "{{ caddy_bin_checksum }}"
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Restart caddy
+
+# --- secrets -----------------------------------------------------------
+- name: Deploy environment file
+  ansible.builtin.template:
+    src: caddy.env.j2
+    dest: "{{ caddy_env_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: Restart caddy # env changes need restart; reload won't re-read
+
+# --- config ------------------------------------------------------------
+- name: Deploy Caddyfile
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: "{{ caddy_conf_dir }}/Caddyfile"
+    owner: root
+    group: "{{ caddy_group }}"
+    mode: "0640"
+    validate: >-
+      /bin/sh -c 'CF_API_TOKEN=0123456789012345678901234567890123456789
+      {{ caddy_bin_path }} validate --adapter caddyfile --config %s'
+  # Provisioning the cloudflare module needs CF_API_TOKEN to be non-empty.
+  # Deliberately a dummy — validate never contacts Cloudflare, so the real
+  # token would buy nothing and would put the secret in this process's
+  # environment on the target for the duration of the task.
+  environment:
+    CF_API_TOKEN: "validate-only-not-a-real-token"
+  notify: Reload caddy
+
+- name: Deploy systemd unit
+  ansible.builtin.template:
+    src: caddy.service.j2
+    dest: /etc/systemd/system/caddy.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart caddy
+
+- name: Remove the old env drop-in
+  ansible.builtin.file:
+    path: /etc/systemd/system/caddy.service.d/env.conf
+    state: absent
+  notify: Reload systemd
+
+- name: Enable and start caddy
+  ansible.builtin.systemd_service:
+    name: caddy
+    enabled: true
+    state: started
+    daemon_reload: true
