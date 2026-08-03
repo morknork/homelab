@@ -1,0 +1,107 @@
+# ---------------------------------------------------------------------
+# Preflight
+# ---------------------------------------------------------------------
+
+# This is the important one. If the bind source is missing, Docker does
+# not error — it creates an empty directory and mounts that, and you
+# find out via "Missing root folder" in Radarr hours later.
+- name: Stat the media bind source
+  ansible.builtin.stat:
+    path: "{{ arr_media_path }}"
+  register: arr_media_stat
+
+- name: Assert the media bind source is a real populated mount
+  ansible.builtin.assert:
+    that:
+      - arr_media_stat.stat.exists
+      - arr_media_stat.stat.isdir
+    fail_msg: >-
+      {{ arr_media_path }} missing inside the container. Check mp0 in
+      the CT config on the host. Do not let compose create it.
+
+- name: Stat the tun device
+  ansible.builtin.stat:
+    path: /dev/net/tun
+  register: arr_tun_stat
+
+- name: Assert tun is present for the gluetun tunnel
+  ansible.builtin.assert:
+    that: arr_tun_stat.stat.exists
+    fail_msg: >-
+      /dev/net/tun missing. Needs the two lxc.cgroup2/lxc.mount.entry
+      tun lines in the CT config and the wireguard module loaded on the
+      host — neither is reachable from this play.
+
+- name: Assert the WireGuard secrets were decrypted
+  ansible.builtin.assert:
+    that:
+      - vault_arr_wireguard_private_key is defined
+      - vault_arr_wireguard_public_key is defined
+      - vault_arr_wireguard_addresses is defined
+    fail_msg: "WireGuard secrets undefined — check SOPS decryption."
+  no_log: true
+
+# ---------------------------------------------------------------------
+# Directories
+# ---------------------------------------------------------------------
+
+- name: Create the stack directory
+  ansible.builtin.file:
+    path: "{{ arr_dir }}"
+    state: directory
+    owner: "{{ arr_owner }}"
+    group: "{{ arr_owner }}"
+    mode: "0700"
+
+- name: Create the config parent
+  ansible.builtin.file:
+    path: "{{ arr_config_dir }}"
+    state: directory
+    owner: "{{ arr_owner }}"
+    group: "{{ arr_pgid }}"
+    mode: "0775"
+
+- name: Create the per-service config directories
+  ansible.builtin.file:
+    path: "{{ arr_config_dir }}/{{ item.name }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "0775"
+  loop: "{{ arr_config_dirs }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# ---------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------
+
+- name: Template the environment file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ arr_dir }}/.env"
+    owner: "{{ arr_owner }}"
+    group: "{{ arr_owner }}"
+    mode: "0600"
+  no_log: true
+  notify: Recreate the arr stack
+
+- name: Template the compose file
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ arr_dir }}/compose.yml"
+    owner: "{{ arr_owner }}"
+    group: "{{ arr_owner }}"
+    mode: "0640"
+    validate: docker compose -f %s config -q
+  notify: Recreate the arr stack
+
+# ---------------------------------------------------------------------
+# Bring it up
+# ---------------------------------------------------------------------
+
+- name: Ensure the stack is running
+  community.docker.docker_compose_v2:
+    project_src: "{{ arr_dir }}"
+    state: present
+    pull: missing

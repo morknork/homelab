@@ -33,12 +33,6 @@
     - role: authentik
       tags: [authentik]
 
-- name: Arr stack
-  hosts: arr02
-  become: true
-  roles:
-    - role: arr_stack
-      tags: [arr]
 
 - name: Caddy
   hosts: caddy01
@@ -47,6 +41,13 @@
     - role: caddy
       tags: [caddy]
 
+- name: Arr stack
+  hosts: arr02
+  become: true
+  roles:
+    - role: arr_stack
+      tags: [arr]
+      
 - name: Jellyfin
   hosts: jellyfin01
   become: true

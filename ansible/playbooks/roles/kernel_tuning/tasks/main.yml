@@ -4,7 +4,7 @@
     name: systemd-timesyncd
     enabled: true
     state: started
-  when: "'vm' in group_names"
+  when: "'vm!pdm' in group_names"
 
 - name: Set hardware clock
   community.general.timezone:

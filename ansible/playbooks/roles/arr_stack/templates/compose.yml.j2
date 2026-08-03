@@ -1,0 +1,124 @@
+{{ ansible_managed | comment }}
+services:
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add: [NET_ADMIN]
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - VPN_SERVICE_PROVIDER={{ arr_vpn_provider }}
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_PUBLIC_KEY=${WIREGUARD_PUBLIC_KEY}
+      - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
+      - SERVER_COUNTRIES=${SERVER_COUNTRIES}
+      - VPN_PORT_FORWARDING=${VPN_PORT_FORWARDING}
+      - VPN_PORT_FORWARDING_PROVIDER=${VPN_PORT_FORWARDING_PROVIDER}
+      - TZ={{ arr_tz }}
+      # Pushes the forwarded port into qBittorrent. Needs "Bypass
+      # authentication for clients on localhost" enabled in the WebUI.
+      - VPN_PORT_FORWARDING_UP_COMMAND=/bin/sh -c 'wget -qO- --post-data="json={\"listen_port\":{{ '{{PORTS}}' }}}" http://127.0.0.1:{{ arr_qbt_webui_port }}/api/v2/app/setPreferences'
+      - FIREWALL_OUTBOUND_SUBNETS={{ arr_firewall_outbound_subnets }}
+    ports:
+      # Published on gluetun because qbittorrent has no net stack.
+      - {{ arr_qbt_webui_port }}:{{ arr_qbt_webui_port }}
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: service:gluetun
+    environment:
+      - PUID={{ arr_puid }}
+      - PGID={{ arr_pgid }}
+      - UMASK=002
+      - TZ={{ arr_tz }}
+      # Must equal the port published on gluetun above.
+      - WEBUI_PORT={{ arr_qbt_webui_port }}
+    volumes:
+      - {{ arr_config_dir }}/qbittorrent:/config
+      - {{ arr_media_path }}:/data
+    depends_on: [gluetun]
+    restart: unless-stopped
+
+{% for svc in ['radarr', 'sonarr'] %}
+  {{ svc }}:
+    image: lscr.io/linuxserver/{{ svc }}:latest
+    container_name: {{ svc }}
+    environment:
+      - PUID={{ arr_puid }}
+      - PGID={{ arr_pgid }}
+      - UMASK=002
+      - TZ={{ arr_tz }}
+    volumes:
+      - {{ arr_config_dir }}/{{ svc }}:/config
+      # Single bind covering both torrents/ and media/ so imports are
+      # hardlinks, not copies.
+      - {{ arr_media_path }}:/data
+    ports:
+      - {{ arr_ports[svc] }}:{{ arr_ports[svc] }}
+    restart: unless-stopped
+
+{% endfor %}
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID={{ arr_puid }}
+      - PGID={{ arr_pgid }}
+      - UMASK=002
+      - TZ={{ arr_tz }}
+    volumes:
+      - {{ arr_config_dir }}/prowlarr:/config
+    ports:
+      - {{ arr_ports.prowlarr }}:{{ arr_ports.prowlarr }}
+    restart: unless-stopped
+
+  cloudflare-solver:
+    image: ghcr.io/nlevee/simple-cloudflare-solver:main
+    container_name: cloudflare-solver
+    # No ports block — Prowlarr reaches it at http://cloudflare-solver:8000
+    restart: unless-stopped
+
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: seerr
+    environment:
+      - TZ={{ arr_tz }}
+      - PORT={{ arr_ports.seerr }}
+    volumes:
+      - {{ arr_config_dir }}/seerr/appdata/config:/app/config
+    ports:
+      - {{ arr_ports.seerr }}:{{ arr_ports.seerr }}
+    restart: unless-stopped
+
+  socket-proxy:
+    image: lscr.io/linuxserver/socket-proxy:latest
+    container_name: socket-proxy
+    environment:
+      - CONTAINERS=1
+      - ALLOW_START=1
+      - ALLOW_STOP=1
+      - ALLOW_RESTARTS=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    tmpfs:
+      - /run
+    restart: unless-stopped
+
+  homarr:
+    image: ghcr.io/homarr-labs/homarr:latest
+    container_name: homarr
+    environment:
+      - SECRET_ENCRYPTION_KEY=${HOMARR_SECRET}
+      - TZ={{ arr_tz }}
+      - DOCKER_HOSTNAMES=socket-proxy
+      - DOCKER_PORTS=2375
+    volumes:
+      - {{ arr_config_dir }}/homarr/appdata:/appdata
+    ports:
+      - {{ arr_ports.homarr }}:{{ arr_ports.homarr }}
+    depends_on: [socket-proxy]
+    restart: unless-stopped
